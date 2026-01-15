@@ -1,0 +1,3 @@
+curl -d "{\"id\": 19,\"title\": \"Opna Womens Short Sleeve Moisture\",\"price\": 7.95,\"description\": \"Short Description\",\"category\":
+\"womens clothing\",\"image\": \"http://127.0.0.1:4000/images/51eg55uWmdL._AC_UX679_.jpg\",\"rating\": 4.5}" -H "Content-Type:
+application/json" http://localhost:4000/api/create
