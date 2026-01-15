@@ -1,0 +1,232 @@
+//Name - Josh Seeley 
+//Netid - jseeley
+
+// Fill function
+fill:
+    LDUR X0, [X0, #0]           // Load n into X0
+    MOV X9, #1                  // Load 1 into X9
+    SUB X0, X0, X9              // Decrement n by 1 (n - 1)
+    MOV X1, #0                  // Initialize i to 0
+
+fill_loop:
+    CMP X1, X0                  // Compare i with n - 1
+    B.HI fill_done              // If i >= n, exit loop
+    SUB X2, X0, X1              // Calculate n - i - 1
+    STUR X2, [X0, X1, LSL #2]   
+    ADD X1, X1, #1              // Increment i
+    B fill_loop                 
+
+fill_done:
+    BR LR
+
+// Swap function
+swap:
+    LDUR X2, [X0, #0]           // Load the value at address a into X2
+    LDUR X3, [X1, #0]           // Load the value at address b into X3
+    STUR X2, [X1, #0]           
+    STUR X3, [X0, #0]           
+    BR LR
+
+// Find Index function
+find_index:
+    LDUR X2, [X0, X1, LSL #2]   
+    LDUR X5, [X0, #0]           
+    ADD X3, X1, #1              
+
+find_index_loop:
+    SUB X6, X5, X1              // Calculate n - start
+    B.LE find_index_done         
+    LDUR X4, [X0, X3, LSL #2]    // Load a[i] into X4
+    SUBS X8, X4, X2             // Compare a[i] with value
+    B.GE find_index_continue     
+
+find_index_continue:
+    ADDS X3, X3, #1             // Increment start
+    B find_index_loop            // Continue loop
+
+find_index_done:
+    SUBS X3, X3, #1             // Decrement start to get the correct index
+    STUR X3, [X8, #0]           // Store index in the indirect result location register
+    BR LR
+
+// Skip Duplicates function
+skip_duplicates:
+    LDUR X2, [X0, X1, LSL #2]   // Load a[start] into X2
+    LDUR X4, [X0, #0]           // Load value into X4
+    MOV X4, #1                  // for comparison
+    MOV X5, X1                  
+
+skip_duplicates_loop:
+    LDUR X6, [X0, X5, LSL #2]   // Load a[index] into X6
+    SUBS X7, X6, X4             
+    B.NE skip_duplicates_done    
+
+    ADD X5, X5, #1             // Increment index
+    B skip_duplicates_loop     
+
+skip_duplicates_done:
+    SUBS X5, X5, #1             // Decrement index to get the correct result
+    STUR X5, [X8, #0]           // Store index in the indirect result location register
+    BR LR
+
+// Complete Cycle function
+complete_cycle:
+    LDUR X2, [X0, #0]           // Load a
+    MOV X1, #0                  // Initialize x1
+    MOV X3, #0                  // Initialize x3
+
+complete_cycle_loop:
+    MOV X3, X2                  // Move x3
+    LDUR X1, [X0, X1, LSL #2]   // Load a
+    BL find_index               
+    LDUR X1, [X8, #0]           //load index
+
+    BL skip_duplicates          
+    LDUR X1, [X8, #0]           
+
+    LDUR X5, [X0, X1, LSL #2]   // Load x5
+    STUR X5, [X0, X3, LSL #2]   // Store x3
+    STUR X2, [X0, X1, LSL #2]   // Store value in a[index]
+
+    SUBS X6, X1, X4             // Compare 
+    B.NE complete_cycle_loop    // If index != start, continue loop
+
+    BR LR
+
+// Cycle Sort function
+cycle_sort:
+    MOV X4, #0                  // Initialize cycle start 
+
+cycle_sort_outer_loop:
+
+    SUBS X5, X1, #1             // n-1
+    SUBS X6, X4, X5             // compare n - 1 and start
+    B.GE cycle_sort_done       
+
+    LDUR X3, [X0, X4, LSL #2]   // Load a into x3
+    ADDS X1, X4, #1             // Set index 
+
+    BL find_index               
+    LDUR X1, [X8, #0]           //load
+
+    SUBS X7, X1, X4             // Compare index with start
+    B.EQ cycle_sort_outer_loop  
+
+    BL skip_duplicates          
+    LDUR X1, [X8, #0]           // load
+
+    STUR X3, [X0, X1, LSL #2]   // Store 
+
+    ADDS X2, X0, X4, LSL #2     // Calculate address of start
+    ADDS X3, X0, X1, LSL #2     // Calculate address of index
+
+    BL complete_cycle          
+
+    BR cycle_sort_outer_loop    
+
+cycle_sort_done:
+
+   BR LR
+
+// Binary search function
+binary_search:
+    SUBS X9, X2, X1             
+    B.LE binary_fail     
+
+    ADD X3, X1, X2              // Calculate mid = start + end
+    ADD X3, X3, #1              
+    LSR X3, X3, #1              
+
+    MOV X8, #1                  
+    MOV X10, #1                 
+
+    LDUR X4, [X0, X3, LSL #2]   // Load a[] into X4
+
+    SUBS X11, X4, X3            // Compare a[mid] with value
+    ANDS X11, X11, X8           // check if a[mid] == value
+    B.EQ binary_success 
+
+    ORR X10, X10, X8, LSL #32   // Set mask to 1 in bit 32
+
+    LDUR X12, [X0, X1, LSL #2]  // load
+    SUBS X13, X12, X4           // Compare a[start] w/ a[mid]
+    ANDS X13, X13, X10          
+    B.NE binary_searchlt 
+
+binary_searchlt:
+    ADDS X1, X3, #1             // Set start to mid + 1
+    B binary_search              // Recursive call
+    BR binary_search_return      
+
+binary_success:
+    MOV X0, X3                   // Move mid to X0
+    BR binary_search_return      // Return
+
+binary_fail:
+    MOV X0, #-1                  // Move -1 to X0
+    BR binary_search_return      // Return
+
+binary_search_return:
+    BR X30                       
+
+// Main function
+main:
+    LDUR X1, [X0, #0]            // Load argc into X1 
+    LDUR X2, [X0, #8]            // Load N into X2 
+    SUB X2, X2, #1               // Decrement N by 1 (N - 1)
+
+    // Allocate memory 
+    SUB X8, X2, XZR              // N - 1 - 0
+    ADD X0, SP, X1               //SP
+    ADD X0, X0, #16             
+    STUR X8, [X0, #0]            //store SP
+
+    // Allocate memory 
+    STUR X8, [X0, #8]            // Store SP + 8
+    MOV X8, #64                 
+    STUR X8, [X0, #16]           // Store SP + 16
+    STUR X28, [X0, #24]          // Store SP + 24
+    STUR X8, [X0, #32]           // Store N at SP + 32
+    MOV X8, #214                
+    MOV X0, SP                   
+    
+    LDUR X0, [X28, #0]           // Load the address a[] into x0
+    BL fill
+
+    LDUR X1, [X0, #0]            // Set start to 0
+    LDUR X2, [X0, #8]            // Set N to lenght of a[]
+    LDUR X3, [X0, #16]           
+    LDUR X4, [X0, #24]           
+    BL cycle_sort
+
+    LDUR X5, [X0, #0]            // start to 0
+    LDUR X6, [X0, #8]            // Set n-1 -> end
+    LDUR X7, [X0, #16]           
+    BL binary_search
+
+    PRNT X0
+
+    SUB X7, X2, #1               
+    BL binary_search
+
+    
+    PRNT X0
+
+    
+    LDUR X7, [X0, #8]            // Load N into X7
+    SUB X7, X7, #1               // Decrement 
+    MOV X7, #2                   // Set X7 to 2 
+    BL binary_search
+
+    
+    PRNT X0
+
+    
+    ADD X7, X2, #1               // Set value to N
+    BL binary_search
+
+    
+    PRNT X0
+
+    // end
+    DUMP                         
